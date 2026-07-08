@@ -1,0 +1,94 @@
+# FreelanceMonitor
+
+Фоновый сервис (.NET 10 Worker Service), который 24/7 опрашивает российские
+фриланс-биржи, отбирает **разовые задачи под .NET/backend** (не вакансии и не
+аутстафф) и шлёт находки в Telegram с кнопкой «Откликнуться».
+
+## Прицел
+
+Ловим **короткие IT/разработческие заказы «сделал и забыл»** на любом языке:
+боты, работа с кодом, парсеры, скрипты, автоматизация, мелкие сервисы и утилиты,
+интеграции, API — задачи на 1–4 часа (максимум ~12 ч). НЕ ловим работу в штат,
+аутстафф, вакансии, а также дизайн/вёрстку карточек/контент — для этого минус-слова
+и потолок бюджета.
+
+Фильтр матчит по **границе слова**, а не по подстроке: иначе «бот» ловил бы
+«ра**бот**а/разра**бот**ка», «rest» — «pinte**rest**», «ml» — «ht**ml**».
+Латиница — целое слово, кириллица — по началу слова (`парс` → `парсер/парсинг`).
+
+## Что работает
+
+- **Источники:** FL.ru (RSS), Freelancehunt (RSS), Weblancer (HTML-парсер, серверный рендер) — из коробки.
+- **Фильтр:** include/exclude ключевые слова + диапазон бюджета `MinBudget…MaxBudget`.
+- **Дедупликация:** `data/seen.json` — заказ не приходит дважды, переживает перезапуск.
+- **Первый запуск:** текущие заказы помечаются молча, уведомления идут с новых.
+- **Telegram:** сообщение с заказом + **готовый отклик, адаптированный под заявку**
+  (ссылается на заголовок, специализация подбирается по типу задачи —
+  бот/парсер/интеграция/автоматизация/бэкенд). Кнопки: «📋 Скопировать отклик»
+  (copy_text кладёт текст в буфер) и «🔗 Открыть заказ». Логика — `ReplyBuilder`.
+- **Автозапуск:** launcher в папке «Автозагрузка», стартует при входе в Windows, скрыто.
+- **Окно активности (09:00–23:00 МСК):** вне окна сервис продолжает опрашивать и
+  молча помечать заказы, но **не шлёт уведомления** — ночью тихо, а утром нет
+  шквала из ночных заказов. Настройка — `Monitor.ActiveHours` (часы, offset, вкл/выкл).
+
+## Отключено (это вакансии/аутстафф, не разовые задачи)
+
+- `career.habr.com` RSS (`?q=.NET`) — в конфиге `Enabled=false`.
+- Telegram-каналы вакансий (`csharpdevjob`, `DotNetRuJobsFeed`) — `TelegramChannels: []`.
+
+Включай их в `appsettings.json`, если понадобится искать именно работу/найм.
+
+## Требует отдельной фазы (Playwright)
+
+- **Freelance.ru** отдаёт JS-оболочку (проекты грузятся XHR, без публичного API) —
+  простым HTTP не парсится, нужен headless-браузер (Chromium ~150 МБ + процесс в фоне).
+  Weblancer в итоге удалось взять обычным HTTP (серверный рендер `/freelance/`).
+
+## Архитектура
+
+```
+Program.cs         — DI, HttpClient (браузерный UA + gzip), сборка источников из конфига
+Worker.cs          — цикл: fetch → dedup → filter → notify раз в N секунд
+Sources/           — IProjectSource, RssProjectSource, TelegramChannelSource, TextUtils
+Filtering/         — MatchFilter (include/exclude/бюджет)
+State/             — SeenStore (JSON виденных id)
+Notifications/     — INotifier + TelegramNotifier (кнопка) + ConsoleNotifier
+Options/           — типизированный конфиг
+```
+
+## Настройка фильтра (`appsettings.json` → `Monitor.Filter`)
+
+- **IncludeKeywords** — заказ проходит, если содержит хотя бы одно (.net, c#, api, бот, парсер, интеграц…).
+- **ExcludeKeywords** — отбрасывается, если содержит хотя бы одно (аутстафф, в штат, вакансия, wordpress, дизайн…).
+- **MinBudget / MaxBudget** — диапазон в рублях. `MaxBudget: 40000` отсекает крупные/долгие проекты.
+  Заказы без распознанного бюджета не отсекаются.
+
+`PollIntervalSeconds` — период опроса (по умолчанию 180 с).
+
+## Управление сервисом
+
+```powershell
+# работает ли (виден процесс)
+Get-Process FreelanceMonitor
+
+# остановить сейчас
+Get-Process FreelanceMonitor | Stop-Process -Force
+
+# запустить сейчас (скрыто)
+wscript.exe "C:\Users\v1nkore\FreelanceMonitor\run-hidden.vbs"
+
+# отключить автозапуск: удалить launcher из автозагрузки
+Remove-Item "$([Environment]::GetFolderPath('Startup'))\FreelanceMonitor.vbs"
+```
+
+Рабочая копия лежит в `C:\Users\v1nkore\FreelanceMonitor` (вне OneDrive, чтобы
+`seen.json` не дёргал синхронизацию). Исходники — в `Desktop/фриланс/FreelanceMonitor`.
+
+## Пересобрать после правок
+
+```powershell
+cd "C:\Users\v1nkore\OneDrive\Desktop\фриланс\FreelanceMonitor"
+dotnet publish -c Release -o "C:\Users\v1nkore\FreelanceMonitor"
+Get-Process FreelanceMonitor | Stop-Process -Force   # перезапустить
+wscript.exe "C:\Users\v1nkore\FreelanceMonitor\run-hidden.vbs"
+```

@@ -1,0 +1,14 @@
+# build output
+bin/
+obj/
+.vs/
+*.user
+
+# Claude Code local config
+.claude/
+
+# real config with secrets — используй appsettings.example.json как шаблон
+appsettings.json
+
+# runtime state
+**/data/seen.json
