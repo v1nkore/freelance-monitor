@@ -85,20 +85,20 @@ Get-Process FreelanceMonitor
 Get-Process FreelanceMonitor | Stop-Process -Force
 
 # запустить сейчас (скрыто)
-wscript.exe "C:\Users\v1nkore\FreelanceMonitor\run-hidden.vbs"
+wscript.exe "$env:USERPROFILE\FreelanceMonitor\run-hidden.vbs"
 
 # отключить автозапуск: удалить launcher из автозагрузки
 Remove-Item "$([Environment]::GetFolderPath('Startup'))\FreelanceMonitor.vbs"
 ```
 
-Рабочая копия лежит в `C:\Users\v1nkore\FreelanceMonitor` (вне OneDrive, чтобы
+Рабочая копия лежит в `%USERPROFILE%\FreelanceMonitor` (вне OneDrive, чтобы
 `seen.json` не дёргал синхронизацию). Исходники — в `Desktop/фриланс/FreelanceMonitor`.
 
 ## Пересобрать после правок
 
 ```powershell
-cd "C:\Users\v1nkore\OneDrive\Desktop\фриланс\FreelanceMonitor"
-dotnet publish -c Release -o "C:\Users\v1nkore\FreelanceMonitor"
+cd <папка с исходниками>
+dotnet publish -c Release -o "$env:USERPROFILE\FreelanceMonitor"
 Get-Process FreelanceMonitor | Stop-Process -Force   # перезапустить
-wscript.exe "C:\Users\v1nkore\FreelanceMonitor\run-hidden.vbs"
+wscript.exe "$env:USERPROFILE\FreelanceMonitor\run-hidden.vbs"
 ```
