@@ -4,6 +4,16 @@
 фриланс-биржи, отбирает **разовые задачи под .NET/backend** (не вакансии и не
 аутстафф) и шлёт находки в Telegram с кнопкой «Откликнуться».
 
+## Установка на новой машине
+
+1. Нужен [.NET 10 SDK](https://dotnet.microsoft.com/download).
+2. `git clone https://github.com/v1nkore/freelance-monitor && cd freelance-monitor`
+3. Скопируй `appsettings.example.json` → `appsettings.json` и вставь свои
+   `Telegram.BotToken` и `Telegram.ChatId` (бот — у @BotFather; настоящий
+   `appsettings.json` в `.gitignore` и не публикуется).
+4. `dotnet run` — сервис начнёт опрашивать биржи; история просмотренного
+   копится в `data/seen.json` локально.
+
 ## Прицел
 
 Ловим **короткие IT/разработческие заказы «сделал и забыл»** на любом языке:
